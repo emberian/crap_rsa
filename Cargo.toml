@@ -1,0 +1,10 @@
+[package]
+
+name = "crap_rsa"
+version = "0.0.1"
+authors = ["Corey Richardson <corey@octayn.net>"]
+
+[dependencies.rust-gmp]
+
+git = "https://github.com/cmr/rust-gmp"
+branch = "crypto"
