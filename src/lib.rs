@@ -22,21 +22,21 @@ pub struct KeyPair {
     pub public: PublicKey,
 }
 
-fn random_prime(modulus: &Mpz, state: &mut gmp::RandState, confidence: u32) -> Mpz {
-    let mut candidate = state.urandom(modulus);
+fn random_prime(bits: u64, state: &mut gmp::RandState, confidence: u32) -> Mpz {
+    let mut candidate = state.urandom_2exp(bits);
 
     while candidate.millerrabin(confidence as libc::c_int) == 0 {
-        candidate = state.urandom(modulus);
+        candidate = state.urandom_2exp(bits);
     }
 
     candidate
 }
 
-fn distinct_prime(modulus: &Mpz, other: &Mpz, state: &mut gmp::RandState, confidence: u32) -> Mpz {
-    let mut candidate = random_prime(modulus, state, confidence);
+fn distinct_prime(bits: u64, other: &Mpz, state: &mut gmp::RandState, confidence: u32) -> Mpz {
+    let mut candidate = random_prime(bits, state, confidence);
 
     while other == &candidate {
-        candidate = random_prime(modulus, state, confidence);
+        candidate = random_prime(bits, state, confidence);
     }
 
     candidate
@@ -48,7 +48,7 @@ fn from(x: u64) -> Mpz {
 
 impl KeyPair {
     /// Generate an n-bit keypair
-    pub fn generate(n: &Mpz) -> KeyPair {
+    pub fn generate(n: u64) -> KeyPair {
         let mut rand = gmp::RandState::new();
 
         let one: Mpz = from(1);
@@ -60,7 +60,7 @@ impl KeyPair {
         // (http://crypto.stanford.edu/~dabo/abstracts/RSAattack-survey.html)
         let e: Mpz = from(65537);
         // returns (gcd, x, y) where gcd = x*a + y*b. our d is y.
-        let d: Mpz = e.gcdext(&phi_n).val2();
+        let d: Mpz = e.invert(&phi_n).unwrap();
 
         KeyPair {
             private: PrivateKey {
@@ -91,7 +91,6 @@ pub fn decrypt(key: &PrivateKey, message: &Mpz) -> Mpz {
     message.powm(&key.d, &key.n)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::{from,KeyPair,PrivateKey,PublicKey};
@@ -117,5 +116,16 @@ mod tests {
         assert_eq!(from(123), keypair.decrypt(&from(2463995467)));
         assert_eq!(from(456), keypair.decrypt(&from(2022084991)));
         assert_eq!(from(123456), keypair.decrypt(&from(1299565302)));
+    }
+
+    #[test]
+    fn simple_roundtrip() {
+        let keypair = KeyPair::generate(1024);
+        for i in range(0, 100u32) {
+            let val = ::std::rand::random();
+            let enc = keypair.encrypt(&from(val));
+            let dec = keypair.decrypt(&enc);
+            assert_eq!(val, dec.to_u64().unwrap());
+        }
     }
 }

@@ -8,3 +8,10 @@ authors = ["Corey Richardson <corey@octayn.net>"]
 
 git = "https://github.com/cmr/rust-gmp"
 branch = "crypto"
+
+[dependencies]
+docopt = "*"
+
+[[bin]]
+name = "rsa_enc"
+path = "src/rsa_enc.rs"
